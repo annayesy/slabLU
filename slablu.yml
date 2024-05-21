@@ -1,4 +1,4 @@
-name: torchenv
+name: slablu
 channels:
   - pytorch
   - nvidia

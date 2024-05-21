@@ -36,7 +36,7 @@ The solver leverages the $\mathcal{H}^2$-matrix structures that emerge during fa
 
 ## Usage
 
-To install SlabLU, clone the repository and install the conda environment in `environment.yml`.
+To install SlabLU, clone the repository and install the conda environment in `slablu.yml`.
 
 To test the framework on a benchmark problem, run
 ```
