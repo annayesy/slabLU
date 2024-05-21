@@ -1,4 +1,9 @@
 # SlabLU: Two-Level Sparse Direct Solver for Elliptic PDEs
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11227615.svg)](https://doi.org/10.5281/zenodo.11227615)
+[![License](https://img.shields.io/github/license/annayesy/slabLU)](./LICENSE.md)
+[![Top language](https://img.shields.io/github/languages/top/annayesy/slabLU)](https://www.python.org)
+![Code size](https://img.shields.io/github/languages/code-size/annayesy/slabLU)
+[![Latest commit](https://img.shields.io/github/last-commit/annayesy/slabLU)](https://github.com/annayesy/slabLU/commits/master)
 
 ## Overview
 SlabLU is a sparse direct solver designed for solving linear systems that arise from the discretization of elliptic partial differential equations (PDEs). By decomposing the domain into thin "slabs" and employing a two-level approach, SlabLU enhances parallelization, making it well-suited for modern multi-core architectures and GPUs.
@@ -11,13 +16,27 @@ The solver leverages the $\mathcal{H}^2$-matrix structures that emerge during fa
 - **Flexible Discretization Compatibility:** Supports a wide range of local discretizations, including high-order multi-domain spectral collocation methods.
 - **High Performance:** Demonstrated ability to solve significant problems, such as a Helmholtz problem on a domain of size $1000 \lambda \times 1000 \lambda$ with $N=100M$, within 15 minutes to six correct digits.
 
+<p align="center">
+    <img src="https://github.com/annayesy/slabLU/blob/main/figures/picture_crystal.png" width="75%"/>
+</p>
+
+<div style="display: flex; justify-content: center;">
+    <p style="width: 75%; text-align: center; font-size: 90%;">
+        Figure 1: Solutions of variable-coefficient Helmholtz problem on square domain $\Omega$ with Dirichlet data given by $u \equiv 1$ on $\partial \Omega$ for various wavenumbers $\kappa.$ The scattering field is $b_{\rm crystal}$, which is a photonic crystal with an extruded corner waveguide. The crystal is represented as a series of narrow Gaussian bumps with separation $s=0.04$ and is designed to filter wave frequencies that are roughly $1/s$.
+    </p>
+</div>
+<p align="center" >
+	<img src="https://github.com/annayesy/slabLU/blob/main/figures/picture_curvy_annulus.png" width="75%" /> 
+</p>
+<div style="display: flex; justify-content: center;">
+    <p style="width: 75%; text-align: center; font-size: 90%;">
+        Figure 2: Solutions of constant-coefficient Helmholtz problem on curved domain $\Phi$ with Dirichlet data given by $u \equiv 1$ on $\partial \Phi$ for various wavenumbers $\kappa$.
+    </p>
+</div>
+
 ## Usage
 
-To install SlabLU:
-
-1. Clone the repository
-2. In a conda environment, install `scipy`, `numpy`, and `pytorch` with GPU compatibility (if a GPU is available).
-3. Install `matplotlib` for plotting utilities.
+To install SlabLU, clone the repository and install the conda environment in `environment.yml`.
 
 To test the framework on a benchmark problem, run
 ```
