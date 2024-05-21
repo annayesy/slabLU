@@ -1,31 +1,29 @@
 import torch
+torch.set_default_dtype(torch.double)
 import numpy as np
-import block_tridiag_solver_dense as block_tridiag
-import sys
+from time import time
+from functools import reduce
 
-from scipy.sparse import kron, diags
-from scipy.sparse import eye as speye
+# scipy sparse imports
+from scipy.sparse import kron, diags, eye as speye, hstack as sp_hstack
 import scipy.sparse
 import scipy.sparse.linalg as spla
-from time import time
-torch.set_default_dtype(torch.double)
-from scipy.sparse import hstack as sp_hstack
-import hps_multidomain_disc
-import pdo
-from functools import reduce
-from hbs_reconstruction import *
-from block_tridiag_solver_structured import *
-import scipy.sparse.linalg as sla
 
-from fd_disc import *
+# discretization imports
+from src_disc import pdo, hps_multidomain_disc
+from src_disc.fd_disc import FD_disc
+
+# solver imports
+import src_solver.block_tridiag_solver_dense as block_tridiag
+from src_solver.hbs_reconstruction import HBS_matrix,copy_params_hbs
+from src_solver.block_tridiag_solver_structured import HBS_BlockTridiagonal
 
 try:
     from petsc4py import PETSc
     petsc_available = True
 except:
     petsc_available = False
-    print("petsc not available")
-
+    
 def to_torch_csr(A,device=torch.device('cpu')):
     A.sort_indices()
     A = torch.sparse_csr_tensor(A.indptr,A.indices,A.data,\
@@ -58,7 +56,7 @@ def apply_sparse_lowmem(A,I,J,v,transpose=False):
         vec_full = A.T @ vec_full
         return torch.tensor(vec_full[I])
 
-class Domain_Driver:
+class Domain_Solver:
     
     def __init__(self,box_geom,pdo_op,kh,h,p=0, \
                  buf_constant=0.5,periodic_bc=False):
@@ -363,7 +361,7 @@ class Domain_Driver:
         info_dict = dict()
         try:
             tic = time()
-            LU = sla.splu(self.A_CC)          
+            LU = spla.splu(self.A_CC)          
             toc_superLU = time() - tic
             if (verbose):
                 print("SUPER LU BUILD SUMMARY")
@@ -669,7 +667,7 @@ class Domain_Driver:
         
     def build_Tred_solver(self):
         tic = time()
-        SL_data = self.assemble_build_Tred()
+        hbs_data = self.assemble_build_Tred()
         toc_assemble = time() - tic;
 
         if (not self.periodic_bc):
@@ -683,7 +681,7 @@ class Domain_Driver:
             device = torch.device('cpu')
         
         tic = time()
-        hbs_blocktri.build_lowmem(*SL_data,device=device)
+        hbs_blocktri.build_lowmem(*hbs_data,device=device)
         toc_factorize = time() - tic;
         self.Tred_solver = hbs_blocktri
         return toc_assemble,toc_factorize
@@ -1141,8 +1139,8 @@ class Domain_Driver:
     def get_TXX_slabind(self,Npan_ind,rank,n_pad=0,todense=False,verbose=False):
 
         Lsize = self.I_L.shape[0]
-        SL = SingleLevel(4,Lsize,rank,n_pad=n_pad)
-        nsamples = SL.bs + rank
+        hbs = HBS_matrix(4,Lsize,rank,n_pad=n_pad)
+        nsamples = hbs.bs + rank
 
         if (torch.cuda.is_available()):
             device=torch.device('cuda')
@@ -1185,23 +1183,23 @@ class Domain_Driver:
         # note that reconstruct function expects Omega.shape[0] == 1
 
         tic = time()
-        SL.reconstruct(Omega,Psi,Y,Z)
+        hbs.reconstruct(Omega,Psi,Y,Z)
         toc_reconstruct = time() - tic;
 
         test_samples = 5
         if (verbose or (Npan_ind==0)):
-            err = torch.linalg.norm(SL.matvec(Omega[...,:test_samples]) - Y[...,:test_samples])\
+            err = torch.linalg.norm(hbs.matvec(Omega[...,:test_samples]) - Y[...,:test_samples])\
                   / torch.linalg.norm(Y[...,:test_samples])
-            err_trans = torch.linalg.norm(SL.matvec(Psi[...,:test_samples],transpose=True) - Z[...,:test_samples])\
+            err_trans = torch.linalg.norm(hbs.matvec(Psi[...,:test_samples],transpose=True) - Z[...,:test_samples])\
                   / torch.linalg.norm(Z[...,:test_samples])
         del Omega; del Psi; del Y; del Z
 
         if (todense):
             tic = time()
-            result = SL.todense(device).cpu()
+            result = hbs.todense(device).cpu()
             toc_todense = time() - tic
         else:
-            result = SL
+            result = hbs
             toc_todense = 0
 
         if (verbose or (Npan_ind==0)):
@@ -1236,75 +1234,75 @@ class Domain_Driver:
             Tslab = self.get_TXX_slabind(0,rank,n_pad=n_pad)
 
             # allocate diag
-            SL_diag_RR = copy_params_SL(Tslab,Npan-1)
-            SL_diag_LL = copy_params_SL(Tslab,Npan-1)
+            hbs_diag_RR = copy_params_hbs(Tslab,Npan-1)
+            hbs_diag_LL = copy_params_hbs(Tslab,Npan-1)
 
             # allocate sub and sup diag
-            SL_sub = copy_params_SL(Tslab,Npan-2)
-            SL_sup = copy_params_SL(Tslab,Npan-2)
+            hbs_sub = copy_params_hbs(Tslab,Npan-2)
+            hbs_sup = copy_params_hbs(Tslab,Npan-2)
 
             ## store relevant information from slab 0
-            SL_diag_RR.UVtensor[0] = Tslab.UVtensor[3]
-            SL_diag_RR.Dtensor[0]  = Tslab.Dtensor[3]
+            hbs_diag_RR.UVtensor[0] = Tslab.UVtensor[3]
+            hbs_diag_RR.Dtensor[0]  = Tslab.Dtensor[3]
 
             for j in range(1,Npan-1):
                 Tslab = self.get_TXX_slabind(j,rank,n_pad=n_pad)
 
-                SL_diag_LL.UVtensor[j-1] = Tslab.UVtensor[0]
-                SL_diag_LL.Dtensor[j-1]  = Tslab.Dtensor[0]
+                hbs_diag_LL.UVtensor[j-1] = Tslab.UVtensor[0]
+                hbs_diag_LL.Dtensor[j-1]  = Tslab.Dtensor[0]
 
-                SL_sup.UVtensor[j-1] = Tslab.UVtensor[1]
-                SL_sup.Dtensor[j-1]  = Tslab.Dtensor[1]
+                hbs_sup.UVtensor[j-1] = Tslab.UVtensor[1]
+                hbs_sup.Dtensor[j-1]  = Tslab.Dtensor[1]
 
-                SL_sub.UVtensor[j-1] = Tslab.UVtensor[2]
-                SL_sub.Dtensor[j-1]  = Tslab.Dtensor[2]
+                hbs_sub.UVtensor[j-1] = Tslab.UVtensor[2]
+                hbs_sub.Dtensor[j-1]  = Tslab.Dtensor[2]
 
-                SL_diag_RR.UVtensor[j] = Tslab.UVtensor[3]
-                SL_diag_RR.Dtensor[j]  = Tslab.Dtensor[3]
+                hbs_diag_RR.UVtensor[j] = Tslab.UVtensor[3]
+                hbs_diag_RR.Dtensor[j]  = Tslab.Dtensor[3]
 
             Tslab = self.get_TXX_slabind(Npan-1,rank,n_pad=n_pad)
-            SL_diag_LL.UVtensor[Npan-2] = Tslab.UVtensor[0]
-            SL_diag_LL.Dtensor[Npan-2]  = Tslab.Dtensor[0]
+            hbs_diag_LL.UVtensor[Npan-2] = Tslab.UVtensor[0]
+            hbs_diag_LL.Dtensor[Npan-2]  = Tslab.Dtensor[0]
             
         #### periodic BC, assemble cyclic block tridiagonal matrix 
         else:
             Tslab = self.get_TXX_slabind(0,rank,n_pad=n_pad)
 
             # allocate diag
-            SL_diag_RR = copy_params_SL(Tslab,Npan)
-            SL_diag_LL = copy_params_SL(Tslab,Npan)
+            hbs_diag_RR = copy_params_hbs(Tslab,Npan)
+            hbs_diag_LL = copy_params_hbs(Tslab,Npan)
 
             # allocate sub and sup diag
-            SL_sub = copy_params_SL(Tslab,Npan)
-            SL_sup = copy_params_SL(Tslab,Npan)
+            hbs_sub = copy_params_hbs(Tslab,Npan)
+            hbs_sup = copy_params_hbs(Tslab,Npan)
             
             for j in range(Npan-1):
-                SL_diag_LL.UVtensor[j] = Tslab.UVtensor[0]
-                SL_diag_LL.Dtensor[j]  = Tslab.Dtensor[0]
+                hbs_diag_LL.UVtensor[j] = Tslab.UVtensor[0]
+                hbs_diag_LL.Dtensor[j]  = Tslab.Dtensor[0]
 
-                SL_sup.UVtensor[j] = Tslab.UVtensor[1]
-                SL_sup.Dtensor[j]  = Tslab.Dtensor[1]
+                hbs_sup.UVtensor[j] = Tslab.UVtensor[1]
+                hbs_sup.Dtensor[j]  = Tslab.Dtensor[1]
 
-                SL_sub.UVtensor[j+1] = Tslab.UVtensor[2]
-                SL_sub.Dtensor[j+1]  = Tslab.Dtensor[2]
+                hbs_sub.UVtensor[j+1] = Tslab.UVtensor[2]
+                hbs_sub.Dtensor[j+1]  = Tslab.Dtensor[2]
 
-                SL_diag_RR.UVtensor[j+1] = Tslab.UVtensor[3]
-                SL_diag_RR.Dtensor[j+1]  = Tslab.Dtensor[3]
+                hbs_diag_RR.UVtensor[j+1] = Tslab.UVtensor[3]
+                hbs_diag_RR.Dtensor[j+1]  = Tslab.Dtensor[3]
                 
                 Tslab = self.get_TXX_slabind(j+1,rank,n_pad=n_pad)
             
             # assign last slab
-            SL_diag_LL.UVtensor[Npan-1] = Tslab.UVtensor[0]
-            SL_diag_LL.Dtensor[Npan-1]  = Tslab.Dtensor[0]
+            hbs_diag_LL.UVtensor[Npan-1] = Tslab.UVtensor[0]
+            hbs_diag_LL.Dtensor[Npan-1]  = Tslab.Dtensor[0]
 
-            SL_sup.UVtensor[Npan-1] = Tslab.UVtensor[1]
-            SL_sup.Dtensor[Npan-1]  = Tslab.Dtensor[1]
+            hbs_sup.UVtensor[Npan-1] = Tslab.UVtensor[1]
+            hbs_sup.Dtensor[Npan-1]  = Tslab.Dtensor[1]
 
-            SL_sub.UVtensor[0] = Tslab.UVtensor[2]
-            SL_sub.Dtensor[0]  = Tslab.Dtensor[2]
+            hbs_sub.UVtensor[0] = Tslab.UVtensor[2]
+            hbs_sub.Dtensor[0]  = Tslab.Dtensor[2]
 
-            SL_diag_RR.UVtensor[0] = Tslab.UVtensor[3]
-            SL_diag_RR.Dtensor[0]  = Tslab.Dtensor[3]
+            hbs_diag_RR.UVtensor[0] = Tslab.UVtensor[3]
+            hbs_diag_RR.Dtensor[0]  = Tslab.Dtensor[3]
             
 
-        return SL_diag_RR, SL_diag_LL, SL_sub,SL_sup
+        return hbs_diag_RR, hbs_diag_LL, hbs_sub,hbs_sup

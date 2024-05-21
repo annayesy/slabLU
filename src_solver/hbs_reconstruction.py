@@ -3,26 +3,26 @@ import numpy as np
 from time import time
 torch.set_default_dtype(torch.double)
 
-def copy_params_SL(SL,b):
-    SL_new = SingleLevel(b,SL.n,SL.k)
+def copy_params_hbs(hbs,b):
+    hbs_new = HBS_matrix(b,hbs.n,hbs.k)
     
-    uv_shape = torch.tensor(SL.UVtensor.shape).long()
-    d_shape  = torch.tensor(SL.Dtensor.shape).long()
+    uv_shape = torch.tensor(hbs.UVtensor.shape).long()
+    d_shape  = torch.tensor(hbs.Dtensor.shape).long()
     uv_shape[0] = b; d_shape[0] = b
     
-    SL_new.UVtensor = torch.zeros(*uv_shape)
-    SL_new.Dtensor  = torch.zeros(*d_shape)
+    hbs_new.UVtensor = torch.zeros(*uv_shape)
+    hbs_new.Dtensor  = torch.zeros(*d_shape)
     
-    SL_new.L = SL.L; SL_new.m = SL.m; SL_new.bs = SL.bs; 
-    SL_new.n_pad = SL.n_pad
-    return SL_new
+    hbs_new.L = hbs.L; hbs_new.m = hbs.m; hbs_new.bs = hbs.bs; 
+    hbs_new.n_pad = hbs.n_pad
+    return hbs_new
 
-def copy_data_SL(SL,b_start,b_end):
-    SL_new = copy_params_SL(SL,b_end-b_start)
+def copy_data_hbs(hbs,b_start,b_end):
+    hbs_new = copy_params_hbs(hbs,b_end-b_start)
     
-    SL_new.UVtensor = SL.UVtensor[b_start:b_end].clone()
-    SL_new.Dtensor  = SL.Dtensor[b_start:b_end].clone()
-    return SL_new
+    hbs_new.UVtensor = hbs.UVtensor[b_start:b_end].clone()
+    hbs_new.Dtensor  = hbs.Dtensor[b_start:b_end].clone()
+    return hbs_new
 
 def get_nearest_div(n,bs):
     while ((np.mod(n,bs) > 0) and bs < n):
@@ -46,7 +46,7 @@ class Matrix:
         v_hat = v.clone()
         return self.V @ (torch.transpose(self.U,-1,-2) @ v_hat) + self.diag * v_hat;
     
-class SingleLevel:
+class HBS_matrix:
     def __init__(self,b,n,k,n_pad=0):
         self.b = b
         self.n, self.k   = n,k
@@ -93,7 +93,7 @@ class SingleLevel:
         UVtensor,Dtensor   = _store_tensors(b,m,bs,k,decomp_list,D_root,device=device)
         self.UVtensor = UVtensor.cpu(); self.Dtensor = Dtensor.cpu()
         
-    def todense_slow(self,device,b_start=None,b_end=None):
+    def todense_hbsow(self,device,b_start=None,b_end=None):
         b_start = 0 if b_start is None else b_start
         b_end   = self.b if b_end is None else b_end
         

@@ -1,9 +1,9 @@
 import torch
 torch.set_default_dtype(torch.double)
-import hps_subdomain_disc
-import hps_parallel_leaf_ops as leaf_ops
 import numpy as np
-import scipy.sparse as sp
+
+from src_disc import hps_subdomain_disc, hps_parallel_leaf_ops as leaf_ops
+from scipy.sparse import coo_matrix
 from time import time
 
 def batched_meshgrid(b,npoints,I,J):
@@ -90,7 +90,7 @@ class HPS_Multidomain:
         toc_flatten = time() - tic
         
         tic = time()
-        sp_mat = sp.coo_matrix(( np.array(data),\
+        sp_mat = coo_matrix(( np.array(data),\
                                 (np.array(row_data,dtype=int),np.array(col_data,dtype=int)))).tocsr()
         sp_mat = sp_mat.tocsr()
         toc_csr_scipy = time() - tic;

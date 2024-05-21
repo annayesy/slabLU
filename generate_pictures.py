@@ -1,6 +1,6 @@
 import os
 import sys
-import plotting_utils
+import src_disc.plotting_utils as plotting_utils
 import matplotlib.pyplot as plt
 
 if not os.path.exists('pickle_files'):
@@ -47,7 +47,7 @@ plotting_utils.plot_solution_from_pickle(pickle_file_freq0,fig,ax[1],plot_pad=0,
                                         title_fontsize=50)
 plotting_utils.plot_solution_from_pickle(pickle_file_freq1,fig,ax[2],plot_pad=0,axes_labeled=False,\
                                         title_fontsize=50)
-plt.savefig('picture_crystal.pdf',bbox_inches='tight')
+plt.savefig('figures/picture_crystal.png',bbox_inches='tight')
 
 ###########################################################################################
 ### generate plots for annulus
@@ -65,7 +65,7 @@ with plt.rc_context():
 pickle_file_freq1 = 'pickle_files/annulus_picture1'
 
 plotting_utils.plot_solution_from_pickle(pickle_file_freq1,fig,ax,title_fontsize=50)
-plt.savefig('picture_annulus.pdf',bbox_inches='tight')
+plt.savefig('figures/picture_annulus.png',bbox_inches='tight')
 
 ###########################################################################################
 ### generate plots for curvy annulus
@@ -74,7 +74,7 @@ n = 800; p = 42
 
 args_curvy = n,p,'bfield_constant', 'curvy_annulus', 6.0, 1.0, True
 
-nwaves1 = 10.0; nwaves2 = 40.0
+nwaves1 = 10.0; nwaves2 = 30.0
 os.system(get_driver_command(nwaves1,'curvy_annulus_picture1',*args_curvy))
 os.system(get_driver_command(nwaves2,'curvy_annulus_picture2',*args_curvy))
 
@@ -89,4 +89,4 @@ pickle_file_freq1 = 'pickle_files/curvy_annulus_picture2'
 plotting_utils.plot_solution_from_pickle(pickle_file_freq0,fig,ax[0],poly_pad=0.02,title_fontsize=60)
 plotting_utils.plot_solution_from_pickle(pickle_file_freq1,fig,ax[1],poly_pad=0.04,title_fontsize=60,\
                                         axes_labeled=False)
-plt.savefig('picture_curvy_annulus.pdf',bbox_inches='tight')
+plt.savefig('figures/picture_curvy_annulus.png',bbox_inches='tight')

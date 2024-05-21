@@ -1,11 +1,13 @@
 import argparse
 import torch
-import numpy as np
-from time import time
 torch.set_default_dtype(torch.double)
 
-from domain_driver import *
-from built_in_funcs import *
+import numpy as np
+from time import time
+
+from   src_solver.slablu_solver import Domain_Solver
+import src_disc.built_in_funcs as built_in_funcs
+import src_disc.pdo as pdo
 import pickle
 import os
 
@@ -91,19 +93,19 @@ elif ( (args.pde).startswith('bfield')):
     
       
     if (args.pde == 'bfield_constant'):
-        bfield = bfield_constant
+        bfield = built_in_funcs.bfield_constant
     elif (args.pde == 'bfield_bumpy'):
-        bfield = bfield_bumpy
+        bfield = built_in_funcs.bfield_bumpy
     elif (args.pde == 'bfield_gaussian_bumps'):
-        bfield = bfield_gaussian_bumps
+        bfield = built_in_funcs.bfield_gaussian_bumps
     elif (args.pde == 'bfield_cavity'):
-        bfield = bfield_cavity_scattering
+        bfield = built_in_funcs.bfield_cavity_scattering
     elif (args.pde == 'bfield_crystal'):
-        bfield = bfield_crystal
+        bfield = built_in_funcs.bfield_crystal
     elif (args.pde == 'bfield_crystal_waveguide'):
-        bfield = bfield_crystal_waveguide
+        bfield = built_in_funcs.bfield_crystal_waveguide
     elif (args.pde == 'bfield_crystal_rhombus'):
-        bfield = bfield_crystal_rhombus
+        bfield = built_in_funcs.bfield_crystal_rhombus
     else:
         raise ValueError
         
@@ -146,7 +148,7 @@ if (disc=='fd'):
     if (args.buf_constant is None):
         args.buf_constant = 0.6
     h = 1/n;
-    dom = Domain_Driver(box_geom,op,\
+    dom = Domain_Solver(box_geom,op,\
                         kh,h,buf_constant=args.buf_constant)
     N = dom.fd.ns[0] * dom.fd.ns[1]
 elif (disc=='hps'):
@@ -156,7 +158,7 @@ elif (disc=='hps'):
         args.buf_constant = 1.0
     p = args.p
     npan = n / (p-2); a = 1/(2*npan)
-    dom = Domain_Driver(box_geom,op,\
+    dom = Domain_Solver(box_geom,op,\
                         kh,a,p=p,buf_constant=args.buf_constant,periodic_bc = args.periodic_bc)
     N = (p-2) * (p*dom.hps.n[0]*dom.hps.n[1] + dom.hps.n[0] + dom.hps.n[1])
 else:
@@ -195,17 +197,17 @@ if (args.bc == 'free_space'):
     ff_body = None; known_sol = True
     
     if (not curved_domain):
-        uu_dir = lambda xx: uu_dir_func_greens(xx,kh)
+        uu_dir = lambda xx: built_in_funcs.uu_dir_func_greens(xx,kh)
     else:
-        uu_dir = lambda xx: uu_dir_func_greens(param_map(xx),kh)
+        uu_dir = lambda xx: built_in_funcs.uu_dir_func_greens(param_map(xx),kh)
         
 elif (args.bc == 'pulse'):
     ff_body = None; known_sol = False
     
     if (not curved_domain):
-        uu_dir = lambda xx: uu_dir_pulse(xx,kh)
+        uu_dir = lambda xx: built_in_funcs.uu_dir_pulse(xx,kh)
     else:
-        uu_dir = lambda xx: uu_dir_pulse(param_map(xx),kh)
+        uu_dir = lambda xx: built_in_funcs.uu_dir_pulse(param_map(xx),kh)
     
 elif (args.bc == 'ones'):
     ff_body = None; known_sol = False
@@ -223,8 +225,8 @@ elif (args.bc == 'mms'):
         assert (not curved_domain)
 
         Lx = 4*np.pi; Ly = 1
-        uu_dir  = lambda xx: uu_dir_func_mms(xx,Lx,Ly)
-        ff_body = lambda xx: ff_body_func_mms(xx,Lx,Ly)
+        uu_dir  = lambda xx: built_in_funcs.uu_dir_func_mms(xx,Lx,Ly)
+        ff_body = lambda xx: built_in_funcs.ff_body_func_mms(xx,Lx,Ly)
         known_sol = True
     else:
         raise ValueError
@@ -235,7 +237,7 @@ elif (args.bc == 'log_dist'):
         assert kh == 0
         assert (not curved_domain)
 
-        uu_dir  = lambda xx: uu_dir_func_greens(xx,kh)
+        uu_dir  = lambda xx: built_in_funcs.uu_dir_func_greens(xx,kh)
         ff_body = None
         known_sol = True
     else:

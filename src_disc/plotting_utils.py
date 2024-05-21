@@ -2,8 +2,7 @@ import torch
 torch.set_default_dtype(torch.double)
 import numpy as np
 from matplotlib.patches import Polygon
-import pdo
-from built_in_funcs import *
+from src_disc import pdo,built_in_funcs
 import pickle
 
 from scipy import interpolate
@@ -41,7 +40,7 @@ def plot_solution(XX,box_geom,geom,kh,uu_sol,fig,ax,\
                  axes_labeled=True,colorbar=True,resolution=1000):
     
     op, param_map, inv_param_map = pdo.get_param_map_and_pdo(geom, \
-                                                             bfield_constant,kh)
+                                                             built_in_funcs.bfield_constant,kh)
     
     solution = uu_sol.reshape(XX.shape[0],)
     max_sol = torch.max(solution)
@@ -142,19 +141,19 @@ def plot_bfield_from_pickle(pickle_file,fig,ax,title=None,\
         geom = build_dict['domain']
     
     if (bfield_str == 'bfield_constant'):
-        bfield = bfield_constant
+        bfield = built_in_funcs.bfield_constant
     elif (bfield_str == 'bfield_bumpy'):
-        bfield = bfield_bumpy
+        bfield = built_in_funcs.bfield_bumpy
     elif (bfield_str == 'bfield_gaussian_bumps'):
-        bfield = bfield_gaussian_bumps
+        bfield = built_in_funcs.bfield_gaussian_bumps
     elif (bfield_str == 'bfield_cavity'):
-        bfield = bfield_cavity_scattering
+        bfield = built_in_funcs.bfield_cavity_scattering
     elif (bfield_str == 'bfield_crystal'):
-        bfield = bfield_crystal
+        bfield = built_in_funcs.bfield_crystal
     elif (bfield_str == 'bfield_crystal_waveguide'):
-        bfield = bfield_crystal_waveguide
+        bfield = built_in_funcs.bfield_crystal_waveguide
     elif (bfield_str == 'bfield_crystal_rhombus'):
-        bfield = bfield_crystal_rhombus
+        bfield = built_in_funcs.bfield_crystal_rhombus
     else:
         raise ValueError
         
@@ -175,7 +174,7 @@ def plot_solution_from_pickle(pickle_file,fig,ax,title=None,title_fontsize=45,\
         box_geom = build_dict['box_geom']
         
     kh = build_dict['kh']
-    bfield_str = bfield_constant
+    bfield_str = built_in_funcs.bfield_constant
     uu_sol = solve_dict['sol']
     
     if ('domain' not in build_dict):

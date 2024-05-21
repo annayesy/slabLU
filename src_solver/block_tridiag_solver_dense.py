@@ -2,7 +2,6 @@ import numpy as np
 import torch
 torch.set_default_dtype(torch.double)
 from time import time
-import sys
 
 #################################### STATIC METHODS   ##################################
 

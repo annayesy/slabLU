@@ -1,8 +1,8 @@
 import torch
 import numpy as np
 torch.set_default_dtype(torch.double)
-import pdo
 
+from src_disc import pdo
 from scipy.special import hankel1
 
 ##################################### FUNCTIONS FOR DIRICHLET DATA AND BODY LOAD #############################
