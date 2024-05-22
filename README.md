@@ -1,5 +1,5 @@
 # SlabLU: Two-Level Sparse Direct Solver for Elliptic PDEs
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11227615.svg)](https://doi.org/10.5281/zenodo.11227615)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11238664.svg)](https://doi.org/10.5281/zenodo.11238664)
 [![License](https://img.shields.io/github/license/annayesy/slabLU)](./LICENSE.md)
 [![Top language](https://img.shields.io/github/languages/top/annayesy/slabLU)](https://www.python.org)
 ![Code size](https://img.shields.io/github/languages/code-size/annayesy/slabLU)

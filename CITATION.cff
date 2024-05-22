@@ -8,5 +8,5 @@ title: "SlabLU: A Two-Level Sparse Direct Solver for Elliptic PDEs in Python"
 version: 1.0.0
 identifiers:
   - type: doi
-    value: 10.5281/zenodo.11227615 
+    value: 10.5281/zenodo.11238664
 date-released: 2024-05-21
